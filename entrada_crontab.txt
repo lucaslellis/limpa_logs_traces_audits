@@ -1,0 +1,5 @@
+######################################################################################################################
+# limpeza de logs, traces, audits, incidentes e core dumps
+######################################################################################################################
+
+00 * * * * /home/oracle/scripts/limpa_logs_traces_audits/limpa_logs_traces_audits.sh 1>/home/oracle/scripts/limpa_logs_traces_audits/limpa_logs_traces_audits.log 2>/home/oracle/scripts/limpa_logs_traces_audits/limpa_logs_traces_audits.elog
