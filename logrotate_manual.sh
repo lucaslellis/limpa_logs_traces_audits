@@ -22,11 +22,22 @@ elif [ ! -f "$1" ]; then
 fi
 
 DIR_PATH=$(dirname "$1")
-FILE_PATH=$(basename "$1")
+FILE_PATH=$(basename "$1" ".log")
 EXEC_DATE=$(date '+%Y%m%d')
+GZIP_FILE_PATH="${FILE_PATH}_${EXEC_DATE}".gz
 
 cd "$DIR_PATH" || exit 1
 
+if [ -f "$GZIP_FILE_PATH" ]; then
+    echo 2>"O arquivo $GZIP_FILE_PATH ja existe."
+    exit 1
+fi
+
 # Compactar o arquivo atual e truncar - nesse passo pode haver perda de dados
-gzip -c "$FILE_PATH" > "${FILE_PATH}_${EXEC_DATE}".gz
+gzip -c "${FILE_PATH}.log" > "${FILE_PATH}_${EXEC_DATE}".gz
 : > "$FILE_PATH"
+
+# Mantem as ultimas <RETENCAO EM DIAS> copias
+while read -r fname; do
+    rm -v "$fname"
+done < "$(find . -name "${FILE_PATH}*.gz" | sort -d | head -n -"${2}")"
