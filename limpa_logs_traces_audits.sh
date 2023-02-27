@@ -18,7 +18,14 @@
 ##      - Incluir entrada na crontab, conforme arquivo entrada_crontab.txt
 ##################################################################################
 
-. "${HOME}"/.bash_profile
+if [ -f "${HOME}"/.bash_profile ]; then
+    source "${HOME}"/.bash_profile
+elif [ -f "${HOME}"/.profile ]; then
+    source "${HOME}"/.profile
+else
+    >&2 echo "Arquivo de profile nao encontrado"
+    exit 1
+fi
 export PATH=/usr/sbin:/sbin:$PATH
 
 DIR_BASE="${HOME}/scripts/limpa_logs_traces_audits"
