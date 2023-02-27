@@ -30,16 +30,17 @@ if [ -n "$(ps -U $USER -f | grep "asm_[p]mon" | grep -v grep)" ]; then
 END_SQL
 
     done) | grep -v "^$" | awk -F, '{ printf $1 " "}' >> $OUT
-    printf "\n" >> ${OUT}
-    # only works with root access
-    # host_nm=$(hostname | cut -d'.' -f1)
-    # if [ -e "$ORACLE_HOME/log/$host_nm/alert${host_nm}.log" ]; then
-    #     printf "$ORACLE_HOME/log/$host_nm/alert${host_nm}.log\n" >> $OUT
-    # fi
-    # if [ -e "$ORACLE_BASE/diag/crs/${host_nm}/crs/trace/alert${host_nm}.log" ]; then
-    #     printf "$ORACLE_BASE/diag/crs/${host_nm}/crs/trace/alert${host_nm}.log\n" >> $OUT
-    # fi
-    cat << !                        >> ${OUT}
+    if [ -s "$OUT" ]; then
+        printf "\n" >> ${OUT}
+        # only works with root access
+        # host_nm=$(hostname | cut -d'.' -f1)
+        # if [ -e "$ORACLE_HOME/log/$host_nm/alert${host_nm}.log" ]; then
+        #     printf "$ORACLE_HOME/log/$host_nm/alert${host_nm}.log\n" >> $OUT
+        # fi
+        # if [ -e "$ORACLE_BASE/diag/crs/${host_nm}/crs/trace/alert${host_nm}.log" ]; then
+        #     printf "$ORACLE_BASE/diag/crs/${host_nm}/crs/trace/alert${host_nm}.log\n" >> $OUT
+        # fi
+        cat << !                        >> ${OUT}
 {
         daily
         rotate $ASM_LOG_RETENTION
@@ -51,6 +52,7 @@ END_SQL
         dateext
 }
 !
+    fi
 fi
 
 OUT="${DIR_BASE}/oracle_rdbms_logrotate.conf"
@@ -79,8 +81,9 @@ END_SQL
 END_SQL
     fi
 done) | grep -v "^$" | awk -F, '{ printf $1 " " }' >> $OUT
-printf "\n" >> ${OUT}
-cat << !                        >> ${OUT}
+    if [ -s "$OUT" ]; then
+        printf "\n" >> ${OUT}
+        cat << !                        >> ${OUT}
 {
         daily
         rotate $DB_LOG_RETENTION
@@ -92,6 +95,7 @@ cat << !                        >> ${OUT}
         dateext
 }
 !
+    fi
 #
 # find the listeners log
 #
@@ -100,13 +104,24 @@ cat << !                        >> ${OUT}
 . oraenv <<< $(\ps -U $USER -f | grep "asm_[p]mon" | grep -v grep | sed s'/^.*_//g') > /dev/null 2>&1
 OUT="${DIR_BASE}/oracle_listener_logrotate.conf"
 rm -f $OUT
-for L in $(\ps -U $USER -f | grep tnslsnr | grep -v grep | sed -r s'/tnslsnr \b([A-Za-z0-9_-]+)\b -.*$/tnslsnr \1/g' | grep -v sed | awk '{print $NF}')
+
+case $(uname) in
+    AIX)
+        export SED_OPT=''
+        export CMD_SED='s/ -no_crs_notify -inherit//g'
+        ;;
+    LINUX)
+        export SED_OPT='-r'
+        export CMD_SED='s/tnslsnr \b([A-Za-z0-9_-]+)\b -.*$/tnslsnr \1/g'
+        ;;
+esac
+for L in $(\ps -U $USER -f | grep tnslsnr | grep -v grep | sed $SED_OPT -e "$CMD_SED" | grep -v sed | awk '{print $NF}')
 do
-        #LSRN_LOG=`lsnrctl status ${L} | grep "Listener Log File" | awk '{print $NF}' | dirname | sed 's/alert.*$/trace\//'``echo ${L} | tr '[:upper:]' '[:lower:]'`".log"
-        LSNR_LOG=$(lsnrctl status LISTENER | grep "Listener Log File" | awk '{print $NF}' | xargs dirname | sed 's/alert/trace/')
+        LSNR_LOG=$(lsnrctl status "${L}" | grep "Listener Log File" | awk '{print $NF}' | xargs dirname | sed 's/alert/trace/')
         echo "$LSNR_LOG/*.log"    >>  ${OUT}
 done
-        cat << !                        >> ${OUT}
+if [ -s "$OUT" ]; then
+    cat << !                        >> ${OUT}
 {
         daily
         rotate $LISTENER_LOG_RETENTION
@@ -118,7 +133,7 @@ done
         dateext
 }
 !
-
+fi
 #***********************************************************************************************#
 #                               E N D      O F      S O U R C E                                 #
 #***********************************************************************************************#
