@@ -13,11 +13,11 @@
 
 # Checagem de parametros
 if [ "$#" -ne  "2" ]; then
-    echo 2>"Numero Invalido de parametros."
-    echo 2>"Utilizaca correta: logrotate_manual.sh <CAMINHO COMPLETO DO LOG> <RETENCAO EM DIAS>"
+    echo "Numero Invalido de parametros."
+    >&2 echo "Utilizaca correta: logrotate_manual.sh <CAMINHO COMPLETO DO LOG> <RETENCAO EM DIAS>"
     exit 1
 elif [ ! -f "$1" ]; then
-    echo 2>"O arquivo $1 nao existe."
+    >&2 echo "O arquivo $1 nao existe."
     exit 1
 fi
 
@@ -29,15 +29,20 @@ GZIP_FILE_PATH="${FILE_PATH}_${EXEC_DATE}".gz
 cd "$DIR_PATH" || exit 1
 
 if [ -f "$GZIP_FILE_PATH" ]; then
-    echo 2>"O arquivo $GZIP_FILE_PATH ja existe."
+    >&2 echo "O arquivo $GZIP_FILE_PATH ja existe."
     exit 1
 fi
 
 # Compactar o arquivo atual e truncar - nesse passo pode haver perda de dados
 gzip -c "${FILE_PATH}.log" > "${FILE_PATH}_${EXEC_DATE}".gz
-: > "$FILE_PATH"
+: > "${FILE_PATH}.log"
 
 # Mantem as ultimas <RETENCAO EM DIAS> copias
-while read -r fname; do
-    rm -v "$fname"
-done < "$(find . -name "${FILE_PATH}*.gz" | sort -d | head -n -"${2}")"
+cnt=0
+find "$DIR_PATH" -name "$FILE_PATH*.gz" | sort -d -r | while read -r fname; do
+    cnt=$((cnt+1))
+    if [ "$cnt" -gt "$2" ]; then
+        echo "$fname"
+        rm "$fname"
+    fi
+done
