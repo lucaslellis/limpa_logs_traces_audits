@@ -145,7 +145,7 @@ limpar_alerts_db_listener() {
 
     for arq_conf in "${DIR_BASE}"/logrotate/*.conf; do
         echo "logrotate: $arq_conf"
-        if [ -x "$(command -v logrotate2)" ]; then
+        if [ -x "$(command -v logrotate)" ]; then
             logrotate "$arq_conf" -s "$LOGROTATE_STATE" -v
         else
             echo "Chamando a funcao manual de logrotate"
