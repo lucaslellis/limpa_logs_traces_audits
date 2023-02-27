@@ -15,8 +15,8 @@ SCRIPT_VERSAO_BANCO="${DIR_BASE}/../obter_versao_banco.sql"
 #
 OUT="${DIR_BASE}/oracle_asm_logrotate.conf"
 rm -f $OUT
-if [ -n "$(ps -ef | grep "asm_[p]mon" | grep -v grep)" ]; then
-    (for I in $(\ps -ef | egrep "(asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//')
+if [ -n "$(ps -U $USER -f | grep "asm_[p]mon" | grep -v grep)" ]; then
+    (for I in $(\ps -U $USER -f | egrep "(asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//')
     do
             DB=$(echo ${I} | sed s/'[1-9]$//')
 
@@ -55,7 +55,7 @@ fi
 
 OUT="${DIR_BASE}/oracle_rdbms_logrotate.conf"
 rm -f $OUT
-(for I in $(\ps -ef | grep -E "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//')
+(for I in $(\ps -U $USER -f | grep -E "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//')
 do
         DB=$(echo ${I})
 
@@ -97,10 +97,10 @@ cat << !                        >> ${OUT}
 #
 
 # We need to have the CRS env to check the listeners
-. oraenv <<< $(\ps -ef | grep "asm_[p]mon" | grep -v grep | sed s'/^.*_//g') > /dev/null 2>&1
+. oraenv <<< $(\ps -U $USER -f | grep "asm_[p]mon" | grep -v grep | sed s'/^.*_//g') > /dev/null 2>&1
 OUT="${DIR_BASE}/oracle_listener_logrotate.conf"
 rm -f $OUT
-for L in $(\ps -ef | grep tnslsnr | grep -v grep | sed -r s'/tnslsnr \b([A-Za-z0-9_-]+)\b -.*$/tnslsnr \1/g' | grep -v sed | awk '{print $NF}')
+for L in $(\ps -U $USER -f | grep tnslsnr | grep -v grep | sed -r s'/tnslsnr \b([A-Za-z0-9_-]+)\b -.*$/tnslsnr \1/g' | grep -v sed | awk '{print $NF}')
 do
         #LSRN_LOG=`lsnrctl status ${L} | grep "Listener Log File" | awk '{print $NF}' | dirname | sed 's/alert.*$/trace\//'``echo ${L} | tr '[:upper:]' '[:lower:]'`".log"
         LSNR_LOG=$(lsnrctl status LISTENER | grep "Listener Log File" | awk '{print $NF}' | xargs dirname | sed 's/alert/trace/')
