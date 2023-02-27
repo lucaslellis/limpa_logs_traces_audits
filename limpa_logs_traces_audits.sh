@@ -14,7 +14,8 @@
 ##      - Conceder permissao de execucao
 ##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/limpa_logs_traces_audits.sh
 ##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/gen_logrotate_config.sh
-##      - logrotate disponivel no PATH
+##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/logrotate_manual.sh
+##      - logrotate disponivel no PATH (desejavel)
 ##      - Incluir entrada na crontab, conforme arquivo entrada_crontab.txt
 ##################################################################################
 
@@ -28,7 +29,7 @@ else
 fi
 export PATH=/usr/sbin:/sbin:$PATH
 
-DIR_BASE="${HOME}/scripts/limpa_logs_traces_audits"
+DIR_BASE="$(dirname $0)"
 SCRIPT_LIMPEZA_AUDIT="${DIR_BASE}/obter_audit_dir.sql"
 SCRIPT_LIMPEZA_TRACES_10="${DIR_BASE}/obter_traces_dir10g.sql"
 SCRIPT_LIMPEZA_TRACES_11="${DIR_BASE}/obter_traces_dir11g.sql"
@@ -144,7 +145,12 @@ limpar_alerts_db_listener() {
 
     for arq_conf in "${DIR_BASE}"/logrotate/*.conf; do
         echo "logrotate: $arq_conf"
-        logrotate "$arq_conf" -s "$LOGROTATE_STATE" -v
+        if [ -x "$(command -v logrotate2)" ]; then
+            logrotate "$arq_conf" -s "$LOGROTATE_STATE" -v
+        else
+            echo "Chamando a funcao manual de logrotate"
+            "$DIR_BASE"/logrotate_manual.sh $DIAS_RETENCAO_ADRCI $(head -1 "$arq_conf")
+        fi
     done
 }
 

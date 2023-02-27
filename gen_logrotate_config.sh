@@ -4,9 +4,9 @@
 # Find the alert.log and listener.log of the running instances and listeners
 #
 
-ASM_LOG_RETENTION=60
-DB_LOG_RETENTION=30
-LISTENER_LOG_RETENTION=15
+ASM_LOG_RETENTION=35
+DB_LOG_RETENTION=35
+LISTENER_LOG_RETENTION=35
 DIR_BASE="$1"
 SCRIPT_VERSAO_BANCO="${DIR_BASE}/../obter_versao_banco.sql"
 
@@ -26,7 +26,7 @@ if [ -n "$(ps -ef | grep "asm_[p]mon" | grep -v grep)" ]; then
         set lines 200   ;
         set head off    ;
         set feed off    ;
-        select replace(value,'cdump','trace') || '/alert_${ORACLE_SID}.log' from v\$parameter where name in ('core_dump_dest') ;
+        select replace(value,'cdump','trace') || '/*.log' from v\$parameter where name in ('core_dump_dest') ;
 END_SQL
 
     done) | grep -v "^$" | awk -F, '{ printf $1 " "}' >> $OUT
@@ -55,7 +55,7 @@ fi
 
 OUT="${DIR_BASE}/oracle_rdbms_logrotate.conf"
 rm -f $OUT
-(for I in $(\ps -ef | egrep "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//')
+(for I in $(\ps -ef | grep -E "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//')
 do
         DB=$(echo ${I})
 
@@ -68,14 +68,14 @@ do
         set lines 200   ;
         set head off    ;
         set feed off    ;
-        select value || '/alert_${ORACLE_SID}.log ' from v\$parameter where name in ('background_dump_dest') ;
+        select value || '/*.log ' from v\$parameter where name in ('background_dump_dest') ;
 END_SQL
     else
         sqlplus -S "/ as sysdba" << END_SQL
         set lines 200   ;
         set head off    ;
         set feed off    ;
-        select value || '/alert_${ORACLE_SID}.log ' from v\$diag_info where name = 'Diag Trace' ;
+        select value || '/*.log ' from v\$diag_info where name = 'Diag Trace' ;
 END_SQL
     fi
 done) | grep -v "^$" | awk -F, '{ printf $1 " " }' >> $OUT
@@ -102,8 +102,9 @@ OUT="${DIR_BASE}/oracle_listener_logrotate.conf"
 rm -f $OUT
 for L in $(\ps -ef | grep tnslsnr | grep -v grep | sed -r s'/tnslsnr \b([A-Za-z0-9_-]+)\b -.*$/tnslsnr \1/g' | grep -v sed | awk '{print $NF}')
 do
-        LSRN_LOG=$(lsnrctl status ${L} | grep "Listener Log File" | awk '{print $NF}' | sed -r 's;[a-z0-9_\-]+\.log$;;g' | sed 's/alert.*$/trace\//'``echo ${L} | tr '[:upper:]' '[:lower:]')".log"
-        echo $LSRN_LOG    >>  ${OUT}
+        #LSRN_LOG=`lsnrctl status ${L} | grep "Listener Log File" | awk '{print $NF}' | dirname | sed 's/alert.*$/trace\//'``echo ${L} | tr '[:upper:]' '[:lower:]'`".log"
+        LSNR_LOG=$(lsnrctl status LISTENER | grep "Listener Log File" | awk '{print $NF}' | xargs dirname | sed 's/alert/trace/')
+        echo "$LSNR_LOG/*.log"    >>  ${OUT}
 done
         cat << !                        >> ${OUT}
 {
