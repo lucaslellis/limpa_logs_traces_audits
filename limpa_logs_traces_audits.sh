@@ -110,7 +110,7 @@ ENDEND
         echo "Instancia: ${inst}"
         . oraenv <<< "$inst" > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
-            for adrci_home in $(\adrci exec="show homes" | tail --lines=+2); do
+            for adrci_home in $(\adrci exec="show homes" | tail -n +2); do
                 echo "adrci_home: ${adrci_home}"
                 adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
             done
@@ -122,11 +122,11 @@ ENDEND
         echo "Instancia: ${inst}"
         . oraenv <<< "$inst" > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
-            for adrci_home in $(\adrci exec="set base $ORACLE_HOME/log; show homes" | tail --lines=+2); do
+            for adrci_home in $(\adrci exec="set base $ORACLE_HOME/log; show homes" | tail -n +2); do
                 echo "adrci_home: ${adrci_home}"
                 adrci exec="set base $ORACLE_HOME/log; set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
             done
-            for adrci_home in $(\adrci exec="show homes" | tail --lines=+2); do
+            for adrci_home in $(\adrci exec="show homes" | tail -n +2); do
                 echo "adrci_home: ${adrci_home}"
                 adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
             done
