@@ -51,6 +51,9 @@ if [ "$#" -ne  "2" ]; then
 elif [ ! -f "$1" ]; then
     >&2 echo "O caminho $1 nao existe."
     exit 1
+elif [ ! -s "$1" ]; then
+    >&2 echo "O arquivo $1 esta vazio."
+    exit 1
 fi
 
 logrotate_file "$1" "$2"
