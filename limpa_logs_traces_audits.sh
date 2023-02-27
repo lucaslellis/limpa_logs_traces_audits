@@ -57,9 +57,9 @@ ENDEND
         echo "Diretorio: ${dir_audit}"
         # o primeiro metodo e mais rapido, mas nao funciona em todos os ambientes
         find "${dir_audit}" -name '*.aud' -mtime +${DIAS_RETENCAO_AUDIT} -delete 2>/dev/null
-        find "${dir_audit}" -name '*.aud' -mtime +${DIAS_RETENCAO_AUDIT} -print0 | xargs -0 -I{} rm {}
+        find "${dir_audit}" -name '*.aud' -mtime +${DIAS_RETENCAO_AUDIT} -exec rm {} +
         find "${dir_audit}" -name 'audit_*.zip' -mtime +${DIAS_RETENCAO_AUDIT} -delete 2>/dev/null
-        find "${dir_audit}" -name 'audit_*.zip' -mtime +${DIAS_RETENCAO_AUDIT} -print0 | xargs -0 -I{} rm {}
+        find "${dir_audit}" -name 'audit_*.zip' -mtime +${DIAS_RETENCAO_AUDIT} -exec rm {} +
 
         # Gera zip com arquivos *.aud ainda dentro da retencao e remove os arquivos depois que o zip e completado
         # ( cd "${dir_audit}" || exit; find . -name "*.aud" | zip --grow --quiet --move "${dir_audit}"/audit_"${DT_EXEC}".zip -@ )
@@ -89,10 +89,10 @@ ENDEND
         for dir in $(cat "${SCRIPT_LIMPEZA_TRACES}.out"); do
             echo "Diretorio: ${dir}"
             # o primeiro metodo e mais rapido, mas nao funciona em todos os ambientes
-            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -delete
-            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -delete
-            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -print0 | xargs -0 -I{} rm {}
-            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -print0 | xargs -0 -I{} rm {}
+            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -delete 2>/dev/null
+            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -delete 2>/dev/null
+            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -exec rm {} +
+            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -exec rm {} +
         done
         rm -f "${SCRIPT_LIMPEZA_TRACES}".out
     done
@@ -122,6 +122,7 @@ ENDEND
         echo "Instancia: ${inst}"
         . oraenv <<< "$inst" > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
+            # Clusterware 11.2
             for adrci_home in $(\adrci exec="set base $ORACLE_HOME/log; show homes" | tail -n +2); do
                 echo "adrci_home: ${adrci_home}"
                 adrci exec="set base $ORACLE_HOME/log; set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
