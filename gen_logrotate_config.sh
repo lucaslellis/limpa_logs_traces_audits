@@ -4,11 +4,11 @@
 # Find the alert.log and listener.log of the running instances and listeners
 #
 
-ASM_LOG_RETENTION=35
-DB_LOG_RETENTION=35
-LISTENER_LOG_RETENTION=35
+
 DIR_BASE="$1"
 SCRIPT_VERSAO_BANCO="${DIR_BASE}/../obter_versao_banco.sql"
+
+source "$DIR_BASE/retencao.sh"
 
 #
 # find the alert.log

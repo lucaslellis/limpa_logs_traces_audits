@@ -17,8 +17,10 @@
 ##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/limpa_logs_traces_audits.sh
 ##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/gen_logrotate_config.sh
 ##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/logrotate_manual.sh
+##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/retencao.sh
 ##      - logrotate disponivel no PATH (desejavel)
 ##      - Incluir entrada na crontab, conforme arquivo entrada_crontab.txt
+##      - Definir no script retencao.sh os prazos de retencao de cada tipo de arquivo
 ##################################################################################
 
 if [ -f "${HOME}"/.bash_profile ]; then
@@ -40,9 +42,7 @@ ARQ_PID="$DIR_BASE/limpa_logs_traces_audits.pid"
 
 LOGROTATE_STATE="${DIR_BASE}/logrotate/oracle_logrotate.status"
 
-DIAS_RETENCAO_AUDIT=366
-DIAS_RETENCAO_TRACES=35
-DIAS_RETENCAO_ADRCI=35
+source "$DIR_BASE/retencao.sh"
 
 DT_EXEC=$(date '+%Y%m%d')
 
