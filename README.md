@@ -26,6 +26,6 @@ Limpa logs, traces, audits, incidentes e core dumps de todos os ORACLE_HOMEs de 
 * Incluir entrada na crontab, conforme arquivo [entrada_crontab.txt](entrada_crontab.txt)
   Caso haja multiplos owners de ORACLE_HOMEs, é necessario agendar a rotina na crontab de cada usuário.
 
-* Variáveis de ambiente definidas no arquivo `${HOME}/.bash_profile`
+* Variáveis de ambiente definidas no arquivo `${HOME}/.bash_profile` ou `${HOME}/.profile`
 
 * Definir no script retencao.sh os prazos de retenção de cada tipo de arquivo
