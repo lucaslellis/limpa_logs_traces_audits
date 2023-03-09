@@ -24,16 +24,16 @@
 ##################################################################################
 
 if [ -f "${HOME}"/.bash_profile ]; then
-    source "${HOME}"/.bash_profile
+    . "${HOME}"/.bash_profile
 elif [ -f "${HOME}"/.profile ]; then
-    source "${HOME}"/.profile
+    . "${HOME}"/.profile
 else
     >&2 echo "Arquivo de profile nao encontrado"
     exit 1
 fi
 export PATH=/usr/sbin:/sbin:$PATH
 
-DIR_BASE="$(dirname $0)"
+DIR_BASE="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_LIMPEZA_AUDIT="${DIR_BASE}/obter_audit_dir.sql"
 SCRIPT_LIMPEZA_TRACES_10="${DIR_BASE}/obter_traces_dir10g.sql"
 SCRIPT_LIMPEZA_TRACES_11="${DIR_BASE}/obter_traces_dir11g.sql"
@@ -42,7 +42,7 @@ ARQ_PID="$DIR_BASE/limpa_logs_traces_audits.pid"
 
 LOGROTATE_STATE="${DIR_BASE}/logrotate/oracle_logrotate.status"
 
-source "$DIR_BASE/retencao.sh"
+. "$DIR_BASE/retencao.sh"
 
 DT_EXEC=$(date '+%Y%m%d')
 
@@ -55,7 +55,9 @@ limpar_audit() {
 ENDEND
     for inst in $(\ps -U $USER -f | grep -E "(ora|asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
         echo "Instancia: ${inst}"
-        . oraenv <<< "$inst" > /dev/null 2>&1
+        export ORAENV_ASK=NO
+        export ORACLE_SID="$inst"
+        . oraenv > /dev/null 2>&1
         dir_audit=$(\sqlplus -S "/ as sysdba" @"${SCRIPT_LIMPEZA_AUDIT}")
         echo "Diretorio: ${dir_audit}"
         # o primeiro metodo e mais rapido, mas nao funciona em todos os ambientes
@@ -79,7 +81,9 @@ limpar_traces() {
 ENDEND
     for inst in $(\ps -U $USER -f | grep -E "(ora|asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
         echo "Instancia: ${inst}"
-        . oraenv <<< "$inst" > /dev/null 2>&1
+        export ORAENV_ASK=NO
+        export ORACLE_SID="$inst"
+        . oraenv > /dev/null 2>&1
 
         versao_banco=$(\sqlplus -S "/ as sysdba" @"${SCRIPT_VERSAO_BANCO}")
         if [[ "$versao_banco" -lt "11" ]]; then
@@ -112,7 +116,9 @@ limpar_logs_xml_adrci() {
 ENDEND
     for inst in $(\ps -U $USER -f | grep -E "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
         echo "Instancia: ${inst}"
-        . oraenv <<< "$inst" > /dev/null 2>&1
+        export ORAENV_ASK=NO
+        export ORACLE_SID="$inst"
+        . oraenv > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
             for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
                 echo "adrci_home: ${adrci_home}"
@@ -124,7 +130,9 @@ ENDEND
     done
     for inst in $(\ps -U $USER -f | grep -E "(asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
         echo "Instancia: ${inst}"
-        . oraenv <<< "$inst" > /dev/null 2>&1
+        export ORAENV_ASK=NO
+        export ORACLE_SID="$inst"
+        . oraenv > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
             # Clusterware 11.2
             for adrci_home in $(\adrci exec="set base $ORACLE_HOME/log; show homes" | tail -n +2 | grep -v user_root); do
