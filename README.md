@@ -1,6 +1,6 @@
 # limpa_logs_traces_audits
 
-Limpa logs, traces, audits, incidentes e core dumps de todos os ORACLE_HOMEs de um servidor.
+Limpa logs, traces, audits, incidentes e core dumps de todos os ORACLE_HOMEs de um usuário.
 
 ## Requisitos
 
@@ -17,10 +17,15 @@ Limpa logs, traces, audits, incidentes e core dumps de todos os ORACLE_HOMEs de 
   ```bash
   chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/limpa_logs_traces_audits.sh
   chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/gen_logrotate_config.sh
+  chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/logrotate_manual.sh
+  chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/retencao.sh
   ```
 
-* logrotate disponivel no `PATH`
+* logrotate disponivel no `PATH` (desejável)
 
 * Incluir entrada na crontab, conforme arquivo [entrada_crontab.txt](entrada_crontab.txt)
+  Caso haja multiplos owners de ORACLE_HOMEs, é necessario agendar a rotina na crontab de cada usuário.
 
-* Variáveis de ambiente definidas no arquivo `${HOME}/.bash_profile`
+* Variáveis de ambiente definidas no arquivo `${HOME}/.bash_profile` ou `${HOME}/.profile`
+
+* Definir no script retencao.sh os prazos de retenção de cada tipo de arquivo

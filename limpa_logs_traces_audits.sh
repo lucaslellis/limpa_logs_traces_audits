@@ -3,7 +3,9 @@
 ##################################################################################
 ## Script: limpa_logs_traces_audits.sh
 ## Descricao: Limpa logs, traces, audits, incidentes e core dumps
-##            de todos os ORACLE_HOMEs de um servidor.
+##            de todos os ORACLE_HOMEs de um usuario.
+##            Caso haja multiplos owners de ORACLE_HOMEs, e necessario
+##            agendar a rotina na crontab de cada usuario.
 ##
 ## Autor: lucaslellis [at] gmail [dot] com
 ##
@@ -14,14 +16,24 @@
 ##      - Conceder permissao de execucao
 ##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/limpa_logs_traces_audits.sh
 ##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/gen_logrotate_config.sh
-##      - logrotate disponivel no PATH
+##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/logrotate_manual.sh
+##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/retencao.sh
+##      - logrotate disponivel no PATH (desejavel)
 ##      - Incluir entrada na crontab, conforme arquivo entrada_crontab.txt
+##      - Definir no script retencao.sh os prazos de retencao de cada tipo de arquivo
 ##################################################################################
 
-. "${HOME}"/.bash_profile
+if [ -f "${HOME}"/.bash_profile ]; then
+    . "${HOME}"/.bash_profile
+elif [ -f "${HOME}"/.profile ]; then
+    . "${HOME}"/.profile
+else
+    >&2 echo "Arquivo de profile nao encontrado"
+    exit 1
+fi
 export PATH=/usr/sbin:/sbin:$PATH
 
-DIR_BASE="${HOME}/scripts/limpa_logs_traces_audits"
+DIR_BASE="$(cd "$(dirname "$0")" && pwd)"
 SCRIPT_LIMPEZA_AUDIT="${DIR_BASE}/obter_audit_dir.sql"
 SCRIPT_LIMPEZA_TRACES_10="${DIR_BASE}/obter_traces_dir10g.sql"
 SCRIPT_LIMPEZA_TRACES_11="${DIR_BASE}/obter_traces_dir11g.sql"
@@ -30,9 +42,7 @@ ARQ_PID="$DIR_BASE/limpa_logs_traces_audits.pid"
 
 LOGROTATE_STATE="${DIR_BASE}/logrotate/oracle_logrotate.status"
 
-DIAS_RETENCAO_AUDIT=366
-DIAS_RETENCAO_TRACES=35
-DIAS_RETENCAO_ADRCI=35
+. "$DIR_BASE/retencao.sh"
 
 DT_EXEC=$(date '+%Y%m%d')
 
@@ -43,19 +53,21 @@ limpar_audit() {
 ## Limpando audits
 ##
 ENDEND
-    for inst in $(\ps -ef | grep -E "(ora|asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
+    for inst in $(\ps -U $USER -f | grep -E "(ora|asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
         echo "Instancia: ${inst}"
-        . oraenv <<< "$inst" > /dev/null 2>&1
+        export ORAENV_ASK=NO
+        export ORACLE_SID="$inst"
+        . oraenv > /dev/null 2>&1
         dir_audit=$(\sqlplus -S "/ as sysdba" @"${SCRIPT_LIMPEZA_AUDIT}")
         echo "Diretorio: ${dir_audit}"
         # o primeiro metodo e mais rapido, mas nao funciona em todos os ambientes
+        # a saida de erros e ignorada por conta de erros de arquivo nao encontrado quando o arquivo nao existe
         find "${dir_audit}" -name '*.aud' -mtime +${DIAS_RETENCAO_AUDIT} -delete 2>/dev/null
-        find "${dir_audit}" -name '*.aud' -mtime +${DIAS_RETENCAO_AUDIT} -print0 | xargs -0 -I{} rm {}
+        find "${dir_audit}" -name '*.aud' -mtime +${DIAS_RETENCAO_AUDIT} -exec rm {} + 2>/dev/null
         find "${dir_audit}" -name 'audit_*.zip' -mtime +${DIAS_RETENCAO_AUDIT} -delete 2>/dev/null
-        find "${dir_audit}" -name 'audit_*.zip' -mtime +${DIAS_RETENCAO_AUDIT} -print0 | xargs -0 -I{} rm {}
+        find "${dir_audit}" -name 'audit_*.zip' -mtime +${DIAS_RETENCAO_AUDIT} -exec rm {} + 2>/dev/null
 
         # Gera zip com arquivos *.aud ainda dentro da retencao e remove os arquivos depois que o zip e completado
-        # ( cd "${dir_audit}" || exit; find . -name "*.aud" | zip --grow --quiet --move "${dir_audit}"/audit_"${DT_EXEC}".zip -@ )
         ( cd "${dir_audit}" || exit; find . -name "*.aud" -exec zip --grow --quiet --move "${dir_audit}"/audit_"${DT_EXEC}".zip {} + )
     done
 }
@@ -67,9 +79,11 @@ limpar_traces() {
 ## Limpando traces
 ##
 ENDEND
-    for inst in $(\ps -ef | grep -E "(ora|asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
+    for inst in $(\ps -U $USER -f | grep -E "(ora|asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
         echo "Instancia: ${inst}"
-        . oraenv <<< "$inst" > /dev/null 2>&1
+        export ORAENV_ASK=NO
+        export ORACLE_SID="$inst"
+        . oraenv > /dev/null 2>&1
 
         versao_banco=$(\sqlplus -S "/ as sysdba" @"${SCRIPT_VERSAO_BANCO}")
         if [[ "$versao_banco" -lt "11" ]]; then
@@ -82,10 +96,11 @@ ENDEND
         for dir in $(cat "${SCRIPT_LIMPEZA_TRACES}.out"); do
             echo "Diretorio: ${dir}"
             # o primeiro metodo e mais rapido, mas nao funciona em todos os ambientes
-            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -delete
-            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -delete
-            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -print0 | xargs -0 -I{} rm {}
-            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -print0 | xargs -0 -I{} rm {}
+            # a saida de erros e ignorada por conta de erros de arquivo nao encontrado quando o arquivo nao existe
+            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -delete 2>/dev/null
+            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -delete 2>/dev/null
+            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -exec rm {} + 2>/dev/null
+            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -exec rm {} + 2>/dev/null
         done
         rm -f "${SCRIPT_LIMPEZA_TRACES}".out
     done
@@ -99,11 +114,13 @@ limpar_logs_xml_adrci() {
 ## Limpando Logs em .xml, incidentes e core dumps do adrci
 ##
 ENDEND
-    for inst in $(\ps -ef | grep -E "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
+    for inst in $(\ps -U $USER -f | grep -E "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
         echo "Instancia: ${inst}"
-        . oraenv <<< "$inst" > /dev/null 2>&1
+        export ORAENV_ASK=NO
+        export ORACLE_SID="$inst"
+        . oraenv > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
-            for adrci_home in $(\adrci exec="show homes" | tail --lines=+2); do
+            for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
                 echo "adrci_home: ${adrci_home}"
                 adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
             done
@@ -111,15 +128,18 @@ ENDEND
             echo "adrci nao existe para o ORACLE_HOME ${ORACLE_HOME}"
         fi
     done
-    for inst in $(\ps -ef | grep -E "(asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
+    for inst in $(\ps -U $USER -f | grep -E "(asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
         echo "Instancia: ${inst}"
-        . oraenv <<< "$inst" > /dev/null 2>&1
+        export ORAENV_ASK=NO
+        export ORACLE_SID="$inst"
+        . oraenv > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
-            for adrci_home in $(\adrci exec="set base $ORACLE_HOME/log; show homes" | tail --lines=+2); do
+            # Clusterware 11.2
+            for adrci_home in $(\adrci exec="set base $ORACLE_HOME/log; show homes" | tail -n +2 | grep -v user_root); do
                 echo "adrci_home: ${adrci_home}"
                 adrci exec="set base $ORACLE_HOME/log; set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
             done
-            for adrci_home in $(\adrci exec="show homes" | tail --lines=+2); do
+            for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
                 echo "adrci_home: ${adrci_home}"
                 adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
             done
@@ -136,7 +156,14 @@ limpar_alerts_db_listener() {
 
     for arq_conf in "${DIR_BASE}"/logrotate/*.conf; do
         echo "logrotate: $arq_conf"
-        logrotate "$arq_conf" -s "$LOGROTATE_STATE" -v
+        if [ -x "$(command -v logrotate)" ]; then
+            logrotate "$arq_conf" -s "$LOGROTATE_STATE" -v
+        else
+            echo "Chamando a funcao manual de logrotate"
+            grep '.log' "$arq_conf" | while read -r line; do
+                "$DIR_BASE"/logrotate_manual.sh "$DIAS_RETENCAO_ADRCI" $line
+            done
+        fi
     done
 }
 
