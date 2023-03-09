@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/ksh
 
 ## Variaveis de definicao de retencao
 

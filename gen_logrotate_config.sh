@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/ksh
 # Howie Jiang -- jiang@pythian.com -- June 14th 2017
 #
 # Find the alert.log and listener.log of the running instances and listeners
