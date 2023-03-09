@@ -160,7 +160,9 @@ limpar_alerts_db_listener() {
             logrotate "$arq_conf" -s "$LOGROTATE_STATE" -v
         else
             echo "Chamando a funcao manual de logrotate"
-            "$DIR_BASE"/logrotate_manual.sh $DIAS_RETENCAO_ADRCI $(head -1 "$arq_conf")
+            grep '.log' "$arq_conf" | while read -r line; do
+                "$DIR_BASE"/logrotate_manual.sh "$DIAS_RETENCAO_ADRCI" $line
+            done
         fi
     done
 }

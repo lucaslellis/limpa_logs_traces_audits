@@ -8,7 +8,7 @@
 DIR_BASE="$1"
 SCRIPT_VERSAO_BANCO="${DIR_BASE}/../obter_versao_banco.sql"
 
-. "$DIR_BASE/retencao.sh"
+. "$DIR_BASE/../retencao.sh"
 
 #
 # find the alert.log
@@ -105,24 +105,22 @@ done) | grep -v "^$" | awk -F, '{ printf $1 " " }' >> $OUT
 # We need to have the CRS env to check the listeners
 export ORAENV_ASK=NO
 export ORACLE_SID=$(\ps -U $USER -f | grep "asm_[p]mon" | grep -v grep | sed s'/^.*_//g')
-. oraenv > /dev/null 2>&1
+if [ ! -z "$ORACLE_SID" ]; then
+    . oraenv > /dev/null 2>&1 0</dev/null
+fi
 OUT="${DIR_BASE}/oracle_listener_logrotate.conf"
 rm -f $OUT
 
-case $(uname) in
-    AIX)
-        export SED_OPT=''
-        export CMD_SED='s/ -no_crs_notify -inherit//g'
-        ;;
-    LINUX)
-        export SED_OPT='-r'
-        export CMD_SED='s/tnslsnr \b([A-Za-z0-9_-]+)\b -.*$/tnslsnr \1/g'
-        ;;
-esac
-for L in $(\ps -U $USER -f | grep tnslsnr | grep -v grep | sed $SED_OPT -e "$CMD_SED" | grep -v sed | awk '{print $NF}')
-do
-        LSNR_LOG=$(lsnrctl status "${L}" | grep "Listener Log File" | awk '{print $NF}' | xargs dirname | sed 's/alert/trace/')
-        echo "$LSNR_LOG/*.log"    >>  ${OUT}
+ps -U $USER -f | grep "[t]nslsnr" | while read -r line; do
+    ORACLE_HOME=$(echo "$line" | awk '{for(i=1;i<=NF;i++)if($i ~ "tnslsnr"){print $(i);break}}' | sed 's;/bin/tnslsnr;;g')
+    LSNR=$(echo "$line" | awk '{for(i=1;i<=NF;i++)if($i ~ "tnslsnr"){print $(i+1);break}}')
+    export PATH=$ORACLE_HOME/bin:$PATH
+    export LIBPATH=$ORACLE_HOME/lib:$LIBPATH
+    export LD_LIBRARY_PATH=$ORACLE_HOME/lib:$LD_LIBRARY_PATH
+    export ORACLE_HOME
+
+    LSNR_LOG=$(lsnrctl status "${LSNR}" | grep "Listener Log File" | awk '{print $NF}' | xargs dirname | sed 's/alert/trace/')
+    echo "$LSNR_LOG/*.log" >>  ${OUT}
 done
 if [ -s "$OUT" ]; then
     cat << !                        >> ${OUT}
