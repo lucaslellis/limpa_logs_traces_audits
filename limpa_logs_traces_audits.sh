@@ -112,6 +112,8 @@ limpar_logs_xml_adrci() {
 ## Limpando Logs em .xml, incidentes e core dumps do adrci
 ##
 ENDEND
+    arquivo_homes_visitados="${DIR_BASE}/homes_visitados.txt"
+    : > "${arquivo_homes_visitados}"
     for inst in $(\ps -U "$USER" -f | awk '$NF ~ /^ora_[p]mon/ {sub("ora_[p]mon_","",$NF); print $NF;}'); do
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
@@ -119,28 +121,38 @@ ENDEND
         . oraenv > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
             for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
-                echo "adrci_home: ${adrci_home}"
-                adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
+                if [[ $(grep -c "$adrci_home" "$arquivo_homes_visitados") -eq "0" ]]; then
+                    echo "adrci_home: ${adrci_home}"
+                    adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
+                    echo "${adrci_home}" >> "${arquivo_homes_visitados}"
+                else
+                    echo "adrci_home: ${adrci_home} ja foi limpo"
+                fi
             done
         else
             echo "adrci nao existe para o ORACLE_HOME ${ORACLE_HOME}"
         fi
     done
+    rm "${arquivo_homes_visitados}"
     for inst in $(\ps -U "$USER" -f | awk '$NF ~ /^asm_[p]mon/ {sub("asm_[p]mon_","",$NF); print $NF;}'); do
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
         . oraenv > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
-            # Clusterware 11.2
-            for adrci_home in $(\adrci exec="set base $ORACLE_HOME/log; show homes" | tail -n +2 | grep -v user_root); do
-                echo "adrci_home: ${adrci_home}"
-                adrci exec="set base $ORACLE_HOME/log; set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
-            done
-            for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
-                echo "adrci_home: ${adrci_home}"
-                adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
-            done
+            versao_asm=$(\sqlplus -S "/ as sysasm" @"${SCRIPT_VERSAO_BANCO}")
+            if [[ "$versao_asm" -lt "12" ]]; then
+                # Clusterware 11.2
+                for adrci_home in $(\adrci exec="set base $ORACLE_HOME/log; show homes" | tail -n +2 | grep -v user_root); do
+                    echo "adrci_home: ${adrci_home}"
+                    adrci exec="set base $ORACLE_HOME/log; set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
+                done
+            else
+                for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
+                    echo "adrci_home: ${adrci_home}"
+                    adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
+                done
+            fi
         else
             echo "adrci nao existe para o ORACLE_HOME ${ORACLE_HOME}"
         fi
