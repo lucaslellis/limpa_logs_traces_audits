@@ -10,8 +10,6 @@
 ## Autor: lucaslellis [at] gmail [dot] com
 ##
 ## Pre-requisitos:
-##      - Criar diretorios
-##             mkdir -p /home/oracle/scripts/limpa_logs_traces_audits/logrotate
 ##      - Copiar os arquivos desta pasta para a pasta no servidor
 ##      - Conceder permissao de execucao
 ##             chmod 700 /home/oracle/scripts/limpa_logs_traces_audits/limpa_logs_traces_audits.sh
@@ -38,7 +36,7 @@ SCRIPT_LIMPEZA_AUDIT="${DIR_BASE}/obter_audit_dir.sql"
 SCRIPT_LIMPEZA_TRACES_10="${DIR_BASE}/obter_traces_dir10g.sql"
 SCRIPT_LIMPEZA_TRACES_11="${DIR_BASE}/obter_traces_dir11g.sql"
 SCRIPT_VERSAO_BANCO="${DIR_BASE}/obter_versao_banco.sql"
-ARQ_PID="$DIR_BASE/limpa_logs_traces_audits.pid"
+DIR_LOCK_PREFIX="${DIR_BASE}/lockdir_"
 
 LOGROTATE_STATE="${DIR_BASE}/logrotate/oracle_logrotate.status"
 
@@ -161,6 +159,7 @@ limpar_alerts_db_listener() {
         else
             echo "Chamando a funcao manual de logrotate"
             grep '.log' "$arq_conf" | while read -r line; do
+                # A expansao do parametro $line e desejada
                 "$DIR_BASE"/logrotate_manual.sh "$DIAS_RETENCAO_ADRCI" $line
             done
         fi
@@ -169,14 +168,36 @@ limpar_alerts_db_listener() {
 
 # Funcao de entrada do script
 main() {
-    echo $$ >> "$ARQ_PID"
+    # Lista os diretorios de lock
+    find "$DIR_BASE" -type d | grep "$DIR_LOCK_PREFIX" | while read -r lock_dir_name; do
+        pid=${lock_dir_name#"$DIR_LOCK_PREFIX"}
+        script_name=$(basename "$0")
+        # verifica se o PID correspondente ao lock esta em execucao e se e do script de limpeza
+        prog_exec=$(ps -U "$USER" -f | awk -v v_scriptname="$script_name" -v v_pid="$pid" '$0 ~ v_scriptname && $1 == v_pid && $0 !~ /awk/ { print v_pid }')
+
+        if [[ -z "$prog_exec" ]]; then
+            echo "Removendo o lock $lock_dir_name"
+            rmdir "$lock_dir_name"
+        else
+            >&2 echo "Ja ha uma execucao em andamento."
+            exit 1
+        fi
+    done
+
+    echo "Criando o lock para a execucao atual."
+    mkdir "${DIR_LOCK_PREFIX}$$"
+
+    if [[ ! -d "$DIR_BASE/logrotate" ]]; then
+        mkdir "$DIR_BASE/logrotate"
+    fi
 
     limpar_audit
     limpar_traces
     limpar_logs_xml_adrci
     limpar_alerts_db_listener
 
-    rm "$ARQ_PID"
+    echo "Removendo o lock."
+    rmdir "${DIR_LOCK_PREFIX}$$"
 }
 
 main
