@@ -173,7 +173,7 @@ main() {
         pid=${lock_dir_name#"$DIR_LOCK_PREFIX"}
         script_name=$(basename "$0")
         # verifica se o PID correspondente ao lock esta em execucao e se e do script de limpeza
-        prog_exec=$(ps -U "$USER" -f | awk -v v_scriptname="$script_name" -v v_pid="$pid" '$0 ~ v_scriptname && $1 == v_pid && $0 !~ /awk/ { print v_pid }')
+        prog_exec=$(ps -U "$USER" -f | awk -v v_scriptname="$script_name" -v v_pid="$pid" '$0 ~ v_scriptname && $2 == v_pid && $0 !~ /awk/ { print v_pid }')
 
         if [[ -z "$prog_exec" ]]; then
             echo "Removendo o lock $lock_dir_name"
