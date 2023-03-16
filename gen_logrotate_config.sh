@@ -14,9 +14,9 @@ SCRIPT_VERSAO_BANCO="${DIR_BASE}/../obter_versao_banco.sql"
 # find the alert.log
 #
 OUT="${DIR_BASE}/oracle_asm_logrotate.conf"
-rm -f $OUT
-if [ -n "$(ps -U $USER -f | grep "asm_[p]mon" | grep -v grep)" ]; then
-    (for I in $(\ps -U $USER -f | egrep "(asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//')
+rm -f "$OUT"
+if [ -n "$(ps -U "$USER" -f | grep "asm_[p]mon" | grep -v grep)" ]; then
+    (for I in $(\ps -U "$USER" -f | awk '$NF ~ /^asm_[p]mon/ {sub("asm_[p]mon_","",$NF); print $NF;}')
     do
             DB=$(echo ${I} | sed s/'[1-9]$//')
             export ORAENV_ASK=NO
@@ -58,7 +58,7 @@ fi
 
 OUT="${DIR_BASE}/oracle_rdbms_logrotate.conf"
 rm -f $OUT
-(for I in $(\ps -U $USER -f | grep -E "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//')
+(for I in $(\ps -U "$USER" -f | awk '$NF ~ /^ora_[p]mon/ {sub("ora_[p]mon_","",$NF); print $NF;}')
 do
         DB=$(echo ${I})
         export ORAENV_ASK=NO
@@ -104,7 +104,7 @@ done) | grep -v "^$" | awk -F, '{ printf $1 " " }' >> $OUT
 
 # We need to have the CRS env to check the listeners
 export ORAENV_ASK=NO
-export ORACLE_SID=$(\ps -U $USER -f | grep "asm_[p]mon" | grep -v grep | sed s'/^.*_//g')
+export ORACLE_SID=$(\ps -U "$USER" -f | awk '$NF ~ /^asm_[p]mon/ {sub("asm_[p]mon_","",$NF); print $NF;}')
 if [ ! -z "$ORACLE_SID" ]; then
     . oraenv > /dev/null 2>&1 0</dev/null
 fi
