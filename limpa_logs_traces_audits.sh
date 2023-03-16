@@ -51,7 +51,7 @@ limpar_audit() {
 ## Limpando audits
 ##
 ENDEND
-    for inst in $(\ps -U $USER -f | grep -E "(ora|asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
+    for inst in $(\ps -U "$USER" -f | awk '$NF ~ /^(ora|asm)_[p]mon/ {sub("(ora|asm)_[p]mon_","",$NF); print $NF;}'); do
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
@@ -77,7 +77,7 @@ limpar_traces() {
 ## Limpando traces
 ##
 ENDEND
-    for inst in $(\ps -U $USER -f | grep -E "(ora|asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
+    for inst in $(\ps -U "$USER" -f | awk '$NF ~ /^(ora|asm)_[p]mon/ {sub("(ora|asm)_[p]mon_","",$NF); print $NF;}'); do
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
@@ -112,7 +112,7 @@ limpar_logs_xml_adrci() {
 ## Limpando Logs em .xml, incidentes e core dumps do adrci
 ##
 ENDEND
-    for inst in $(\ps -U $USER -f | grep -E "(ora)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
+    for inst in $(\ps -U "$USER" -f | awk '$NF ~ /^ora_[p]mon/ {sub("ora_[p]mon_","",$NF); print $NF;}'); do
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
@@ -126,7 +126,7 @@ ENDEND
             echo "adrci nao existe para o ORACLE_HOME ${ORACLE_HOME}"
         fi
     done
-    for inst in $(\ps -U $USER -f | grep -E "(asm)_[p]mon_" | awk '{print $NF}' | sed 's/.*pmon_//'); do
+    for inst in $(\ps -U "$USER" -f | awk '$NF ~ /^asm_[p]mon/ {sub("asm_[p]mon_","",$NF); print $NF;}'); do
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
