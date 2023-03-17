@@ -17,7 +17,7 @@ SCRIPT_VERSAO_BANCO="${DIR_BASE}/../obter_versao_banco.sql"
 OUT="${DIR_BASE}/oracle_asm_logrotate.conf"
 rm -f "$OUT"
 # shellcheck disable=SC2009
-if [ "$(ps -U "$USER" -f | grep -c "asm_[p]mon")" -ge 1 ]; then
+if [ "$(ps -U "$USER" -f | grep -c "asm_[p]mon")" -ge "1" ]; then
     (for I in $(\ps -U "$USER" -f | awk '$NF ~ /^asm_[p]mon/ {sub("asm_[p]mon_","",$NF); print $NF;}')
     do
             # shellcheck disable=SC2030

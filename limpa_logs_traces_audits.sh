@@ -119,17 +119,24 @@ limpar_logs_xml_adrci() {
 ENDEND
     arquivo_homes_visitados="${DIR_BASE}/homes_visitados.txt"
     : > "${arquivo_homes_visitados}"
+    ORACLE_BASE_ANTERIOR="$ORACLE_BASE"
     for inst in $(\ps -U "$USER" -f | awk '$NF ~ /^ora_[p]mon/ {sub("ora_[p]mon_","",$NF); print $NF;}'); do
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
         # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
+
+        if [[ "$ORACLE_BASE" != "$ORACLE_BASE_ANTERIOR" ]]; then
+            : > "$arquivo_homes_visitados"
+            ORACLE_BASE_ANTERIOR="$ORACLE_BASE"
+        fi
+
         if [ -x "$(command -v adrci)" ]; then
-            for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
+            for adrci_home in $(\adrci exec="set base ${ORACLE_BASE}; show homes" | tail -n +2 | grep -v user_root); do
                 if [[ $(grep -c "$adrci_home" "$arquivo_homes_visitados") -eq "0" ]]; then
                     echo "adrci_home: ${adrci_home}"
-                    adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
+                    adrci exec="set base ${ORACLE_BASE}; set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
                     echo "${adrci_home}" >> "${arquivo_homes_visitados}"
                 else
                     echo "adrci_home: ${adrci_home} ja foi limpo"
@@ -139,13 +146,19 @@ ENDEND
             echo "adrci nao existe para o ORACLE_HOME ${ORACLE_HOME}"
         fi
     done
-    rm "${arquivo_homes_visitados}"
+
     for inst in $(\ps -U "$USER" -f | awk '$NF ~ /^asm_[p]mon/ {sub("asm_[p]mon_","",$NF); print $NF;}'); do
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
         # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
+
+        if [[ "$ORACLE_BASE" != "$ORACLE_BASE_ANTERIOR" ]]; then
+            : > "$arquivo_homes_visitados"
+            ORACLE_BASE_ANTERIOR="$ORACLE_BASE"
+        fi
+
         if [ -x "$(command -v adrci)" ]; then
             versao_asm=$(\sqlplus -S "/ as sysasm" @"${SCRIPT_VERSAO_BANCO}")
             if [[ "$versao_asm" -lt "12" ]]; then
@@ -155,15 +168,16 @@ ENDEND
                     adrci exec="set base $ORACLE_HOME/log; set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
                 done
             else
-                for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
+                for adrci_home in $(\adrci exec="set base $ORACLE_BASE; show homes" | tail -n +2 | grep -v user_root); do
                     echo "adrci_home: ${adrci_home}"
-                    adrci exec="set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
+                    adrci exec="set base $ORACLE_BASE; set home ${adrci_home}; migrate schema; purge -age ${retencao_adrci_min}"
                 done
             fi
         else
             echo "adrci nao existe para o ORACLE_HOME ${ORACLE_HOME}"
         fi
     done
+    rm "${arquivo_homes_visitados}"
 }
 
 # compactar e limpar alert logs e logs dos listeners
@@ -178,9 +192,7 @@ limpar_alerts_db_listener() {
         else
             echo "Chamando a funcao manual de logrotate"
             grep '.log' "$arq_conf" | while read -r line; do
-                params=""
-                set -A params -- "$line"
-                "$DIR_BASE"/logrotate_manual.sh "$DIAS_RETENCAO_ADRCI" "${params[@]}"
+                "$DIR_BASE"/logrotate_manual.sh "$DIAS_RETENCAO_ADRCI" "$line"
             done
         fi
     done
@@ -210,6 +222,10 @@ main() {
     if [[ ! -d "$DIR_BASE/logrotate" ]]; then
         mkdir "$DIR_BASE/logrotate"
     fi
+    chmod 700 "$DIR_BASE/limpa_logs_traces_audits.sh"
+    chmod 700 "$DIR_BASE/logrotate_manual.sh"
+    chmod 700 "$DIR_BASE/gen_logrotate_config.sh"
+    chmod 700 "$DIR_BASE/retencao.sh"
 
     limpar_audit
     limpar_traces

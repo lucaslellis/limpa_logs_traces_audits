@@ -61,7 +61,9 @@ fi
 
 RETENCAO=$1
 shift
-for fname in "$@"; do
+params=""
+set -A params -- "$@"
+for fname in $params; do
     echo "Chamando a funcao para o arquivo $fname"
     logrotate_file "$RETENCAO" "$fname"
 done
