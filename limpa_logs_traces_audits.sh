@@ -22,8 +22,10 @@
 ##################################################################################
 
 if [ -f "${HOME}"/.bash_profile ]; then
+    # shellcheck source=/dev/null
     . "${HOME}"/.bash_profile
 elif [ -f "${HOME}"/.profile ]; then
+    # shellcheck source=/dev/null
     . "${HOME}"/.profile
 else
     >&2 echo "Arquivo de profile nao encontrado"
@@ -40,6 +42,7 @@ DIR_LOCK_PREFIX="${DIR_BASE}/lockdir_"
 
 LOGROTATE_STATE="${DIR_BASE}/logrotate/oracle_logrotate.status"
 
+# shellcheck source=/dev/null
 . "$DIR_BASE/retencao.sh"
 
 DT_EXEC=$(date '+%Y%m%d')
@@ -55,15 +58,16 @@ ENDEND
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
+        # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
         dir_audit=$(\sqlplus -S "/ as sysdba" @"${SCRIPT_LIMPEZA_AUDIT}")
         echo "Diretorio: ${dir_audit}"
         # o primeiro metodo e mais rapido, mas nao funciona em todos os ambientes
         # a saida de erros e ignorada por conta de erros de arquivo nao encontrado quando o arquivo nao existe
-        find "${dir_audit}" -name '*.aud' -mtime +${DIAS_RETENCAO_AUDIT} -delete 2>/dev/null
-        find "${dir_audit}" -name '*.aud' -mtime +${DIAS_RETENCAO_AUDIT} -exec rm {} + 2>/dev/null
-        find "${dir_audit}" -name 'audit_*.zip' -mtime +${DIAS_RETENCAO_AUDIT} -delete 2>/dev/null
-        find "${dir_audit}" -name 'audit_*.zip' -mtime +${DIAS_RETENCAO_AUDIT} -exec rm {} + 2>/dev/null
+        find "${dir_audit}" -name '*.aud' -mtime +"${DIAS_RETENCAO_AUDIT}" -delete 2>/dev/null
+        find "${dir_audit}" -name '*.aud' -mtime +"${DIAS_RETENCAO_AUDIT}" -exec rm {} + 2>/dev/null
+        find "${dir_audit}" -name 'audit_*.zip' -mtime +"${DIAS_RETENCAO_AUDIT}" -delete 2>/dev/null
+        find "${dir_audit}" -name 'audit_*.zip' -mtime +"${DIAS_RETENCAO_AUDIT}" -exec rm {} + 2>/dev/null
 
         # Gera zip com arquivos *.aud ainda dentro da retencao e remove os arquivos depois que o zip e completado
         ( cd "${dir_audit}" || exit; find . -name "*.aud" -exec zip --grow --quiet --move "${dir_audit}"/audit_"${DT_EXEC}".zip {} + )
@@ -81,6 +85,7 @@ ENDEND
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
+        # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
 
         versao_banco=$(\sqlplus -S "/ as sysdba" @"${SCRIPT_VERSAO_BANCO}")
@@ -91,15 +96,15 @@ ENDEND
         fi
 
         \sqlplus -S "/ as sysdba" @"${SCRIPT_LIMPEZA_TRACES}" > "${SCRIPT_LIMPEZA_TRACES}.out"
-        for dir in $(cat "${SCRIPT_LIMPEZA_TRACES}.out"); do
+        while IFS= read -r dir; do
             echo "Diretorio: ${dir}"
             # o primeiro metodo e mais rapido, mas nao funciona em todos os ambientes
             # a saida de erros e ignorada por conta de erros de arquivo nao encontrado quando o arquivo nao existe
-            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -delete 2>/dev/null
-            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -delete 2>/dev/null
-            find "${dir}" -name '*.trc' -mtime +${DIAS_RETENCAO_TRACES} -exec rm {} + 2>/dev/null
-            find "${dir}" -name '*.trm' -mtime +${DIAS_RETENCAO_TRACES} -exec rm {} + 2>/dev/null
-        done
+            find "${dir}" -name '*.trc' -mtime +"${DIAS_RETENCAO_TRACES}" -delete 2>/dev/null
+            find "${dir}" -name '*.trm' -mtime +"${DIAS_RETENCAO_TRACES}" -delete 2>/dev/null
+            find "${dir}" -name '*.trc' -mtime +"${DIAS_RETENCAO_TRACES}" -exec rm {} + 2>/dev/null
+            find "${dir}" -name '*.trm' -mtime +"${DIAS_RETENCAO_TRACES}" -exec rm {} + 2>/dev/null
+        done < "${SCRIPT_LIMPEZA_TRACES}.out"
         rm -f "${SCRIPT_LIMPEZA_TRACES}".out
     done
 }
@@ -118,6 +123,7 @@ ENDEND
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
+        # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
             for adrci_home in $(\adrci exec="show homes" | tail -n +2 | grep -v user_root); do
@@ -138,6 +144,7 @@ ENDEND
         echo "Instancia: ${inst}"
         export ORAENV_ASK=NO
         export ORACLE_SID="$inst"
+        # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
         if [ -x "$(command -v adrci)" ]; then
             versao_asm=$(\sqlplus -S "/ as sysasm" @"${SCRIPT_VERSAO_BANCO}")
@@ -171,8 +178,9 @@ limpar_alerts_db_listener() {
         else
             echo "Chamando a funcao manual de logrotate"
             grep '.log' "$arq_conf" | while read -r line; do
-                # A expansao do parametro $line e desejada
-                "$DIR_BASE"/logrotate_manual.sh "$DIAS_RETENCAO_ADRCI" $line
+                params=""
+                set -A params -- "$line"
+                "$DIR_BASE"/logrotate_manual.sh "$DIAS_RETENCAO_ADRCI" "${params[@]}"
             done
         fi
     done
