@@ -198,8 +198,44 @@ limpar_alerts_db_listener() {
     done
 }
 
+# Verifica se os parametros de retencao estao definidos
+verifica_retencao() {
+    # Usando a sintaxe compativel com ksh88 por conta do AIX
+    if ! expr "$DIAS_RETENCAO_AUDIT" : '^[0-9][0-9]*$' > /dev/null ; then
+        >&2 echo "A variavel DIAS_RETENCAO_AUDIT nao foi definida ou o valor e invalido"
+        exit 1
+    fi
+
+    if ! expr "$DIAS_RETENCAO_TRACES" : '^[0-9][0-9]*$' > /dev/null ; then
+        >&2 echo "A variavel DIAS_RETENCAO_TRACES nao foi definida ou o valor e invalido"
+        exit 1
+    fi
+
+    if ! expr "$DIAS_RETENCAO_ADRCI" : '^[0-9][0-9]*$' > /dev/null ; then
+        >&2 echo "A variavel DIAS_RETENCAO_ADRCI nao foi definida ou o valor e invalido"
+        exit 1
+    fi
+
+    if ! expr "$ASM_LOG_RETENTION" : '^[0-9][0-9]*$' > /dev/null ; then
+        >&2 echo "A variavel ASM_LOG_RETENTION nao foi definida ou o valor e invalido"
+        exit 1
+    fi
+
+    if ! expr "$DB_LOG_RETENTION" : '^[0-9][0-9]*$' > /dev/null ; then
+        >&2 echo "A variavel DB_LOG_RETENTION nao foi definida ou o valor e invalido"
+        exit 1
+    fi
+
+    if ! expr "$LISTENER_LOG_RETENTION" : '^[0-9][0-9]*$' > /dev/null ; then
+        >&2 echo "A variavel LISTENER_LOG_RETENTION nao foi definida ou o valor e invalido"
+        exit 1
+    fi
+}
+
 # Funcao de entrada do script
 main() {
+    verifica_retencao
+
     # Lista os diretorios de lock
     find "$DIR_BASE" -type d | grep "$DIR_LOCK_PREFIX" | while read -r lock_dir_name; do
         pid=${lock_dir_name#"$DIR_LOCK_PREFIX"}
