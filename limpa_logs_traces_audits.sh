@@ -23,10 +23,10 @@
 
 if [ -f "${HOME}"/.bash_profile ]; then
     # shellcheck source=/dev/null
-    . "${HOME}"/.bash_profile
+    . "${HOME}"/.bash_profile > /dev/null 2>&1
 elif [ -f "${HOME}"/.profile ]; then
     # shellcheck source=/dev/null
-    . "${HOME}"/.profile
+    . "${HOME}"/.profile > /dev/null 2>&1
 else
     >&2 echo "Arquivo de profile nao encontrado"
     exit 1
