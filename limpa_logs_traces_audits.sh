@@ -42,6 +42,8 @@ DIR_LOCK_PREFIX="${DIR_BASE}/lockdir_"
 
 LOGROTATE_STATE="${DIR_BASE}/logrotate/oracle_logrotate.status"
 
+ORIG_ORACLE_BASE="${ORACLE_BASE}"
+
 # shellcheck source=/dev/null
 . "$DIR_BASE/retencao.sh"
 
@@ -60,6 +62,10 @@ ENDEND
         export ORACLE_SID="$inst"
         # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
+
+        if [[ -z "$ORACLE_BASE" ]]; then
+            ORACLE_BASE="$ORIG_ORACLE_BASE"
+        fi
         dir_audit=$(\sqlplus -S "/ as sysdba" @"${SCRIPT_LIMPEZA_AUDIT}")
         echo "Diretorio: ${dir_audit}"
         # o primeiro metodo e mais rapido, mas nao funciona em todos os ambientes
@@ -87,6 +93,9 @@ ENDEND
         export ORACLE_SID="$inst"
         # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
+        if [[ -z "$ORACLE_BASE" ]]; then
+            ORACLE_BASE="$ORIG_ORACLE_BASE"
+        fi
 
         versao_banco=$(\sqlplus -S "/ as sysdba" @"${SCRIPT_VERSAO_BANCO}")
         if [[ "$versao_banco" -lt "11" ]]; then
@@ -126,6 +135,9 @@ ENDEND
         export ORACLE_SID="$inst"
         # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
+        if [[ -z "$ORACLE_BASE" ]]; then
+            ORACLE_BASE="$ORIG_ORACLE_BASE"
+        fi
 
         if [[ "$ORACLE_BASE" != "$ORACLE_BASE_ANTERIOR" ]]; then
             : > "$arquivo_homes_visitados"
@@ -153,6 +165,9 @@ ENDEND
         export ORACLE_SID="$inst"
         # shellcheck source=/dev/null
         . oraenv > /dev/null 2>&1
+        if [[ -z "$ORACLE_BASE" ]]; then
+            ORACLE_BASE="$ORIG_ORACLE_BASE"
+        fi
 
         if [[ "$ORACLE_BASE" != "$ORACLE_BASE_ANTERIOR" ]]; then
             : > "$arquivo_homes_visitados"
